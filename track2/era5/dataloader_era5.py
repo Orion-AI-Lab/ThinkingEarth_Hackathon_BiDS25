@@ -7,6 +7,7 @@ import json
 import numpy as np
 from torch.utils.data import Dataset
 import h5py as h5
+import xarray as xr
 import datetime as dt
 
 from aurora import Batch, Metadata
@@ -22,6 +23,7 @@ class dataloader_era5(Dataset):
                 metadata_path: str,
                 in_channels: List[int],
                 out_channels: List[int],
+                model: str,
                 stats_mean_path: str = None,
                 stats_std_path: str = None,
                 normalize: bool = True):
@@ -37,6 +39,7 @@ class dataloader_era5(Dataset):
         self.metadata_path = metadata_path
         self.in_channels = in_channels
         self.out_channels = out_channels
+        self.model = model
         self.normalize = normalize
 
         self.mean, self.std = self.get_stats()
@@ -44,8 +47,8 @@ class dataloader_era5(Dataset):
 
     def get_stats(self):
         if self.stats_mean_path is None and self.stats_std_path is None:
-            self.stats_mean_path = "track2/metadata/{model}/global_means.npy"
-            self.stats_std_path = "track2/metadata/{model}/global_stds.npy"
+            self.stats_mean_path = f"/bids_weather_forecasting_hackathon/track2/metadata/{self.model}/global_means.npy"
+            self.stats_std_path = f"/bids_weather_forecasting_hackathon/track2/metadata/{self.model}/global_stds.npy"
         mean = np.load(self.stats_mean_path, allow_pickle=True)
         std = np.load(self.stats_std_path, allow_pickle=True)
 
@@ -58,6 +61,22 @@ class dataloader_era5(Dataset):
 
     def get_channel_list(self):
         return self.metadata['coords']['channel']
+
+    def get_static_variables(self):
+
+        if self.model=="sfno":
+            # we load two static variables: orography and landsea mask
+            oro_path = "metadata/sfno/orography.nc"
+            lsm_path = "metadata/sfno/land_mask.nc"
+            with xr.open_dataset(oro_path) as ds:
+                orography = ds["Z"].values
+            with xr.open_dataset(lsm_path) as ds:
+                landsea_mask = ds["LSM"].values
+        else:
+            orography = None
+            landsea_mask = None
+
+        return orography, landsea_mask
 
     def get_data(self, date, model):
         # date input has to has format: "%Y-%M-%DT%h:%m:%s"
@@ -161,14 +180,20 @@ class dataloader_era5(Dataset):
             # return
             output = upper_data, surface_data
         elif model == "sfno":
-            # FOR NOW: randomly generate a numpy array of dimension (8,721,1440)
-            rand_data = np.random.rand(2,721,1440)
+            """# FOR NOW: randomly generate a numpy array of dimension (8,721,1440)
+            rand_data = np.random.rand(2,721,1440)"""
+            # load static variables
+            orography, landsea_mask = self.get_static_variables()
+            # concatenate
+            static_data = np.concatenate((orography, landsea_mask), axis=0)
+            print(f"Shape of static variables: {static_data.shape}")
+            print(f"Shape of data: {data.shape}")
+
             # concatenate data with rand_data
-            final_data = np.concatenate((data, rand_data), axis=0)
+            final_data = np.concatenate((static_data, data), axis=0)
             final_data = np.expand_dims(final_data, axis=0)
             # convert to torch and make it float
             final_data = torch.from_numpy(final_data).float()
-            print(f"Shape of final_data: {final_data.shape}")
             # return
             output = final_data
 
