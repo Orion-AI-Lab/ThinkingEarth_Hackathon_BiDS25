@@ -1,0 +1,13 @@
+h5netcdf
+h5py
+netcdf4==1.5.8
+scipy
+xarray
+dask
+zarr
+onnx==1.12.0
+onnxruntime-gpu==1.14.0
+ruamel.yaml
+wandb
+moviepy==1.0.3
+microsoft-aurora==1.6.0
