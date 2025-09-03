@@ -2,7 +2,6 @@
 
 <div style="display: flex; align-items: center; justify-content: space-between;">
 	<div>
-		<h3>Hackathon at BiDS 2025 - Riga, Latvia</h3>
 		<p>
 			This repo is part of the hackathon organized by Thinking Earth, organized at the BiDS conference 2025 in Riga, Latvia.<br>
 			Find our official webpage <a href="https://thinkingearth-hackathon.devpost.com/">here</a>.
