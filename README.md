@@ -3,7 +3,7 @@
 <div style="display: flex; align-items: center; justify-content: space-between;">
 	<div>
 		<p>
-			This repo is part of the ThinkingEarth hackathon, organized at the BiDS conference 2025 in Riga, Latvia. 
+			This repo is part of the ThinkingEarth hackathon, organized at the Big Data from Space 2025 conference in Riga, Latvia. 
 			Find our official webpage <a href="https://thinkingearth-hackathon.devpost.com/">here</a>.
 		</p>
 	</div>
