@@ -1,4 +1,4 @@
-### Hackathon at BiDS 2025 - Riga, Latvia
+# Hackathon at BiDS 2025 - Riga, Latvia
 
 <div style="display: flex; align-items: center; justify-content: space-between;">
 	<div>
