@@ -78,7 +78,7 @@ class dataloader_era5(Dataset):
 
         return orography, landsea_mask
 
-    def get_data(self, date, model):
+    def get_data(self, date):
         # date input has to has format: "%Y-%M-%DT%h:%m:%s"
         # example: '2011-11-04T00:05:23'
 
@@ -103,7 +103,7 @@ class dataloader_era5(Dataset):
                 index = np.where(timestamps == timestamp)[0][0]
                 data_timestamp = timestamps[index]
             # extract data
-            if model=="aurora":
+            if self.model=="aurora":
                 data = torch.from_numpy(data_handle[index-1:index+1, ...])
                 print(f"Shape of data: {data.shape}")
             else:
@@ -114,7 +114,7 @@ class dataloader_era5(Dataset):
         channel_list = self.get_channel_list()
         print(f"Channel list: {channel_list}")
 
-        if model=="aurora":
+        if self.model=="aurora":
             # FOR NOW: Random static data
             # randomly generate a numpy array of dimension (8,721,1440)
             static_data = torch.from_numpy(np.random.rand(3,721,1440)).float()
@@ -161,7 +161,7 @@ class dataloader_era5(Dataset):
                 ),
             )
             output=batch
-        elif model =="pangu":
+        elif self.model =="pangu":
             # get indices in channel_list for surface and atmospheric variables
             surf_ids = [channel_list.index(var) for var in ['msl', 'u10m', 'v10m', 't2m']]
             pangu_z_list = ["z1000", "z925", "z850", "z700", "z600", "z500", "z400", "z300", "z250", "z200", "z150", "z100", "z50"]
@@ -179,7 +179,7 @@ class dataloader_era5(Dataset):
             upper_data = np.stack((data[z_ids, :, :], data[q_ids, :, :], data[t_ids, :, :], data[u_ids, :, :], data[v_ids, :, :]), axis=0).astype(np.float32)
             # return
             output = upper_data, surface_data
-        elif model == "sfno":
+        elif self.model == "sfno":
             """# FOR NOW: randomly generate a numpy array of dimension (8,721,1440)
             rand_data = np.random.rand(2,721,1440)"""
             # load static variables
