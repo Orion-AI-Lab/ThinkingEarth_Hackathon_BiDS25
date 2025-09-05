@@ -1,4 +1,5 @@
 import os
+import sys
 import logging
 from typing import Optional, List, Tuple, Union
 
@@ -12,6 +13,7 @@ import datetime as dt
 
 from aurora import Batch, Metadata
 
+from models.utils import compute_zenith_angle
 
 class dataloader_era5(Dataset):
     """
@@ -24,31 +26,33 @@ class dataloader_era5(Dataset):
                 in_channels: List[int],
                 out_channels: List[int],
                 model: str,
-                stats_mean_path: str = None,
-                stats_std_path: str = None,
                 normalize: bool = True):
         """
         Args:
             data_path (string): Path to the h5 file with ERA5 data.
-            in_channels (list[int]): XXX
-            out_channels (list[int]): XXX
         """
         self.data_path = data_path
-        self.stats_mean_path = stats_mean_path
-        self.stats_std_path= stats_std_path
         self.metadata_path = metadata_path
         self.in_channels = in_channels
         self.out_channels = out_channels
         self.model = model
         self.normalize = normalize
 
-        self.mean, self.std = self.get_stats()
         self.metadata = self.get_metadata()
 
+        # load externally saved stats for the sfno model, otherwise normalization will not be applied in the dataloader
+        if self.model == 'sfno':
+            self.stats_mean_path = "/era5/sfno/stats/global_means.npy"
+            self.stats_std_path = "/era5/sfno/stats/global_stds.npy"
+            self.mean, self.std = self.get_stats()
+            print(f"Loaded stats for the SFNO model.")
+            print(f"Shape of mean: {self.mean.shape}")
+            print(f"Shape of std: {self.std.shape}")
+        else:
+            self.mean, self.std = None, None
+            
+
     def get_stats(self):
-        if self.stats_mean_path is None and self.stats_std_path is None:
-            self.stats_mean_path = f"/bids_weather_forecasting_hackathon/track2/metadata/{self.model}/global_means.npy"
-            self.stats_std_path = f"/bids_weather_forecasting_hackathon/track2/metadata/{self.model}/global_stds.npy"
         mean = np.load(self.stats_mean_path, allow_pickle=True)
         std = np.load(self.stats_std_path, allow_pickle=True)
 
@@ -62,7 +66,7 @@ class dataloader_era5(Dataset):
     def get_channel_list(self):
         return self.metadata['coords']['channel']
 
-    def get_static_variables(self):
+    def get_static_variables(self, timestamp: Optional[float] = None):
 
         if self.model=="sfno":
             # we load two static variables: orography and landsea mask
@@ -72,9 +76,16 @@ class dataloader_era5(Dataset):
                 orography = ds["Z"].values
             with xr.open_dataset(lsm_path) as ds:
                 landsea_mask = ds["LSM"].values
-            print(f"Shape of orography: {orography.shape}")
-            print(f"Shape of landsea_mask: {landsea_mask.shape}")
+            # one hot encode the landsea mask
+            landsea_mask = torch.from_numpy(np.floor(landsea_mask)).to(dtype=torch.long)
+            landsea_mask = torch.nn.functional.one_hot(landsea_mask).squeeze()
+            landsea_mask = landsea_mask.permute(2, 0, 1)  # (H, W, C) -> (C, H, W)
             geopotential = None
+            # calculate cos zenith angle as additional static variables
+            latitude = np.array(self.metadata['coords']['lat'])
+            longitude = np.array(self.metadata['coords']['lon'])
+            lon_grid, lat_grid = np.meshgrid(longitude, latitude)
+            cos_zenith_angle = compute_zenith_angle(timestamp, lat_grid, lon_grid)            
         elif self.model=="aurora":
             # we load two static variables: orography and landsea mask
             oro_path = "/era5/static/orography.nc"
@@ -86,12 +97,14 @@ class dataloader_era5(Dataset):
                 landsea_mask = ds["LSM"].values
             with xr.open_dataset(geo_path) as ds:
                 geopotential = ds["z"].values
+            cos_zenith_angle = None
         else:
             orography = None
             landsea_mask = None
             geopotential = None
+            cos_zenith_angle = None
 
-        return orography, landsea_mask, geopotential
+        return orography, landsea_mask, geopotential, cos_zenith_angle
 
     def get_data(self, date):
         # date input has to has format: "%Y-%M-%DT%h:%m:%s"
@@ -131,9 +144,10 @@ class dataloader_era5(Dataset):
 
         if self.model=="aurora":
             # update: load static variables
-            orography, landsea_mask, geopotential = self.get_static_variables()
+            orography, landsea_mask, geopotential, cos_zenith_angle = self.get_static_variables()
             # concatenate
             static_data = np.concatenate((orography, landsea_mask, geopotential), axis=0)
+            static_data = torch.from_numpy(static_data).float()
             print(f"Shape of static variables: {static_data.shape}")
             print(f"Shape of data: {data.shape}")
             # time
@@ -196,24 +210,23 @@ class dataloader_era5(Dataset):
             # return
             output = upper_data, surface_data
         elif self.model == "sfno":
+            # normalize
+            data = (data - self.mean) / self.std
+            data = data[:, :73, :, :]  # only use the first 73 variables
             # load static variables
-            orography, landsea_mask, geopotential = self.get_static_variables()
+            orography, landsea_mask, geopotential, cos_zenith_angle = self.get_static_variables(timestamp)
             # concatenate
-            static_data = np.concatenate((orography, landsea_mask), axis=0)
+            static_data = np.expand_dims(np.concatenate((cos_zenith_angle, orography, landsea_mask), axis=0), axis=0)
             print(f"Shape of static variables: {static_data.shape}")
             print(f"Shape of data: {data.shape}")
-
-            # concatenate data with rand_data
-            final_data = np.concatenate((static_data, data), axis=0)
-            final_data = np.expand_dims(final_data, axis=0)
+            # concatenate data with static data
+            final_data = np.concatenate((data, static_data), axis=1)
+            print(f"Shape of final data: {final_data.shape}")
             # convert to torch and make it float
             final_data = torch.from_numpy(final_data).float()
             # return
             output = final_data
-
-        # normalize variables
-        if self.normalize:
-            data = (data - self.mean) / self.std
+            
 
         return output
 
