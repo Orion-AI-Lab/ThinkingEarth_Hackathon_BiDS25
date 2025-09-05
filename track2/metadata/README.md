@@ -29,4 +29,4 @@ Find the respective website where to download the data here:
 
 # Structure
 
-For each model, please create an individual folder. The dataloader will look for files in the respective folder. 
+For each model's specific data, please create an individual folder. The dataloader will look for files in the respective folder. 

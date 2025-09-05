@@ -66,17 +66,32 @@ class dataloader_era5(Dataset):
 
         if self.model=="sfno":
             # we load two static variables: orography and landsea mask
-            oro_path = "metadata/sfno/orography.nc"
-            lsm_path = "metadata/sfno/land_mask.nc"
+            oro_path = "/era5/sfno/static/orography.nc"
+            lsm_path = "/era5/sfno/static/land_mask.nc"
             with xr.open_dataset(oro_path) as ds:
                 orography = ds["Z"].values
             with xr.open_dataset(lsm_path) as ds:
                 landsea_mask = ds["LSM"].values
+            print(f"Shape of orography: {orography.shape}")
+            print(f"Shape of landsea_mask: {landsea_mask.shape}")
+            geopotential = None
+        elif self.model=="aurora":
+            # we load two static variables: orography and landsea mask
+            oro_path = "/era5/static/orography.nc"
+            lsm_path = "/era5/static/land_sea_mask.nc"
+            geo_path = "/era5/static/geopotential.nc"
+            with xr.open_dataset(oro_path) as ds:
+                orography = ds["Z"].values
+            with xr.open_dataset(lsm_path) as ds:
+                landsea_mask = ds["LSM"].values
+            with xr.open_dataset(geo_path) as ds:
+                geopotential = ds["z"].values
         else:
             orography = None
             landsea_mask = None
+            geopotential = None
 
-        return orography, landsea_mask
+        return orography, landsea_mask, geopotential
 
     def get_data(self, date):
         # date input has to has format: "%Y-%M-%DT%h:%m:%s"
@@ -115,11 +130,12 @@ class dataloader_era5(Dataset):
         print(f"Channel list: {channel_list}")
 
         if self.model=="aurora":
-            # FOR NOW: Random static data
-            # randomly generate a numpy array of dimension (8,721,1440)
-            static_data = torch.from_numpy(np.random.rand(3,721,1440)).float()
-            static_data = static_data = static_data
-            print(f"Shape of static data: {static_data.shape}")
+            # update: load static variables
+            orography, landsea_mask, geopotential = self.get_static_variables()
+            # concatenate
+            static_data = np.concatenate((orography, landsea_mask, geopotential), axis=0)
+            print(f"Shape of static variables: {static_data.shape}")
+            print(f"Shape of data: {data.shape}")
             # time
             time = np.array(data_timestamp)
             time = time.astype("datetime64[s]").tolist()
@@ -180,10 +196,8 @@ class dataloader_era5(Dataset):
             # return
             output = upper_data, surface_data
         elif self.model == "sfno":
-            """# FOR NOW: randomly generate a numpy array of dimension (8,721,1440)
-            rand_data = np.random.rand(2,721,1440)"""
             # load static variables
-            orography, landsea_mask = self.get_static_variables()
+            orography, landsea_mask, geopotential = self.get_static_variables()
             # concatenate
             static_data = np.concatenate((orography, landsea_mask), axis=0)
             print(f"Shape of static variables: {static_data.shape}")
