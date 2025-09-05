@@ -14,7 +14,7 @@ This repository contains all the materials and information for track 2 of the ha
 We provide the setup of a docker image that can be used to develop and work on the hackathon task.
 
 ## Local install of the makani library
-We will load the SFNO from the open-source [makani](https://github.com/NVIDIA/makani) codebase. Please install the codebasse in editable mode in your loaded docker image. Please make sure you install the version XXX as the newest version will have issues with some dependencies. 
+We will load the SFNO from the open-source [makani](https://github.com/NVIDIA/makani) codebase. Please install the codebasse in editable mode in your loaded docker image. Please make sure you install the version v0.1.1, as the newest version will have issues with the provided checkpoint. 
 
 ```bash
 git clone git@github.com:NVIDIA/makani.git

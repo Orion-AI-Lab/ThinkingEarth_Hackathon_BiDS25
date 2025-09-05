@@ -9,9 +9,8 @@ data
 ├── ...
 ├── era5                                 # folder for era5 data
 │   ├── 2018                             # 2018 data
-│      ├── 73varQ                        # data comprising 73 variables, including the q variables
-│      ├── 73varR                        # data comprising 73 variables, including the q variables
-│   ├── static                             # static era5 data
+│      ├── 73varQ                        # data comprising 73 variables, including the atmospheric var u,v,t,z,q
+│   ├── static                           # static era5 data
 ├── sfno                                 # sfno-related data, i.e., checkpoints and stats
 ```
 
