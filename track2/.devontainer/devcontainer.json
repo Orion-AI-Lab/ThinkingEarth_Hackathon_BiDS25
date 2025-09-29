@@ -1,0 +1,31 @@
+{
+    "name": "HACKATHON Dev Container",
+    "image": "bids2025_weather-dev:${localEnv:USER}",
+    "initializeCommand": "bash .devcontainer/start.sh --build-only",
+    "runArgs": [
+        "--gpus=${localEnv:DEV_CONTAINER_GPUS:all}",
+        "--ipc=host",
+        "--ulimit=memlock=-1",
+        "--ulimit=stack=67108864"
+    ],
+    "workspaceFolder": "/bids_weather_forecasting_hackathon",
+    "workspaceMount": "source=${localWorkspaceFolder},target=/bids_weather_forecasting_hackathon,type=bind",
+    "containerEnv": {
+        "WANDB_MODE": "online"
+    },
+    "mounts": [
+        "source=${localEnv:DEV_CONTAINER_DATA_DIR:XXX},target=/data,type=bind",
+        "source=${localEnv:DEV_CONTAINER_ERA5_DIR:XXX},target=/era5,type=bind",
+        "source=${localEnv:DEV_CONTAINER_OUTPUT_DIR:XXX},target=/workspace,type=bind"
+    ],
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "ms-azuretools.vscode-docker",
+                "ms-python.python",
+                "ms-toolsai.jupyter",
+                "tamasfe.even-better-toml"
+            ]
+        }
+    }
+}
